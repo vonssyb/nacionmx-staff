@@ -72,27 +72,40 @@ export default function ApplicationForm({ user }) {
     setRobloxUser(null);
     setRobloxError('');
     try {
-      // Usar endpoint legacy GET que soporta CORS desde browsers
+      // Endpoint de búsqueda GET que soporta CORS desde browsers
       const encoded = encodeURIComponent(formData.roblox_username.trim());
-      const res = await fetch(`https://api.roblox.com/users/get-by-username?username=${encoded}`, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      });
-      if (!res.ok) throw new Error('not_found');
+      const res = await fetch(
+        `https://users.roblox.com/v1/users/search?keyword=${encoded}&limit=10`,
+        { method: 'GET', headers: { 'Accept': 'application/json' } }
+      );
+      if (!res.ok) throw new Error('api_error');
       const data = await res.json();
-      if (!data.Id || data.errorMessage) {
-        setRobloxError('Usuario no encontrado en Roblox. Verifica que el nombre sea exacto.');
+
+      // Buscar coincidencia exacta (case-insensitive)
+      const exact = data.data?.find(
+        u => u.name.toLowerCase() === formData.roblox_username.trim().toLowerCase()
+      );
+
+      if (!exact) {
+        setRobloxError('Usuario no encontrado en Roblox. El nombre debe ser exacto, incluyendo mayúsculas.');
         return;
       }
-      // Buscar avatar con proxy alternativo
+
+      // Intentar avatar (puede fallar por CORS, es opcional)
       let avatarUrl = null;
       try {
-        const avatarRes = await fetch(`https://www.roblox.com/headshot-thumbnail/image?userId=${data.Id}&width=150&height=150&format=png`);
-        if (avatarRes.ok) avatarUrl = avatarRes.url;
-      } catch { /* avatar opcional */ }
+        const avRes = await fetch(
+          `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${exact.id}&size=150x150&format=Png`,
+          { method: 'GET' }
+        );
+        if (avRes.ok) {
+          const avData = await avRes.json();
+          avatarUrl = avData.data?.[0]?.imageUrl || null;
+        }
+      } catch { /* avatar es decorativo, no crítico */ }
 
-      setRobloxUser({ id: data.Id, name: data.Username, displayName: data.Username, avatarUrl });
-    } catch { setRobloxError('Usuario no encontrado en Roblox. Verifica que el nombre sea exacto.'); }
+      setRobloxUser({ id: exact.id, name: exact.name, displayName: exact.displayName, avatarUrl });
+    } catch { setRobloxError('Error al contactar Roblox. Intenta de nuevo en un momento.'); }
     finally { setRobloxVerifying(false); }
   };
 
