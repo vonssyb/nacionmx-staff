@@ -73,15 +73,14 @@ function AppModal({ app, onClose, onUpdate }) {
 
   const act = async (status) => {
     setBusy(true);
-    const { error } = await supabase.from('staff_applications').update({
-      status, reviewed_by: OWNER_ID,
-      reviewed_by_username: 'vonssyb',
-      reviewed_at: new Date().toISOString(),
-      review_notes: note || null,
-    }).eq('id', app.id);
+    const { data, error } = await supabase.rpc('review_staff_application', {
+      app_id: app.id,
+      new_status: status,
+      review_note: note || null,
+    });
     setBusy(false);
-    if (!error) { onUpdate(app.id, status); onClose(); }
-    else alert('Error: ' + error.message);
+    if (!error && data === true) { onUpdate(app.id, status); onClose(); }
+    else alert('Error: ' + (error?.message || 'Sin permisos'));
   };
 
   const p1 = app.part1_answers || {};
