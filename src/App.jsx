@@ -28,6 +28,9 @@ function App() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
+        options: {
+          redirectTo: 'https://vonssyb.github.io/nacionmx-staff/'
+        }
       });
       if (error) throw error;
     } catch (error) {
