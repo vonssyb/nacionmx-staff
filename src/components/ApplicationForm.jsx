@@ -42,11 +42,12 @@ export default function ApplicationForm({ user }) {
   const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
   const discordId = user.identities?.find(i => i.provider === 'discord')?.id || '0';
   const { days: accountAgeDays, createdAt } = getDiscordAccountAgeDays(discordId);
-  const meetsTimeReq = accountAgeDays >= 5;
+  const meetsTimeReq = accountAgeDays >= 30;
 
   const [formData, setFormData] = useState({
     req_age: false,
     req_time: meetsTimeReq,
+    req_server: false,
     req_mic: false,
     roblox_username: '',
   });
@@ -93,7 +94,7 @@ export default function ApplicationForm({ user }) {
   const signOut = async () => { await supabase.auth.signOut(); };
 
   const canGoNext = () => {
-    if (step === 1) return formData.req_age && formData.req_time && formData.req_mic;
+    if (step === 1) return formData.req_age && formData.req_time && formData.req_server && formData.req_mic;
     if (step === 2) return formData.roblox_username.trim().length >= 3;
     return true;
   };
@@ -154,7 +155,7 @@ export default function ApplicationForm({ user }) {
                 <span className="form-label">Tengo 15 años o más.</span>
               </label>
 
-              {/* Antigüedad Discord - AUTO */}
+              {/* Antigüedad cuenta Discord - AUTO 30 días */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem',
                 borderRadius: '8px', marginBottom: '1rem',
@@ -166,14 +167,24 @@ export default function ApplicationForm({ user }) {
                 </div>
                 <div>
                   <span className="form-label" style={{ color: meetsTimeReq ? 'var(--nmx-green)' : 'var(--nmx-red)', display: 'block' }}>
-                    {meetsTimeReq ? '✓ Antigüedad verificada automáticamente' : '✗ Cuenta de Discord muy nueva'}
+                    {meetsTimeReq ? '✓ Cuenta verificada automáticamente' : '✗ Cuenta de Discord muy nueva (requiere 30 días)'}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Mi cuenta de Discord tiene al menos 5 días.
+                    Mi cuenta de Discord tiene al menos 30 días.
                     {createdAt && ` (Creada: ${createdAt.toLocaleDateString('es-MX')} · ${accountAgeDays} días)`}
                   </span>
                 </div>
               </div>
+
+              {/* Tiempo en servidor - MANUAL */}
+              <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer', gap: '0.75rem' }}>
+                <input type="checkbox" name="req_server" checked={formData.req_server} onChange={updateForm}
+                  style={{ width: '20px', height: '20px', accentColor: 'var(--nmx-red)', flexShrink: 0 }} />
+                <div>
+                  <span className="form-label" style={{ display: 'block' }}>Llevo al menos 5 días en el servidor de NaciónMX.</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>El tiempo de membresía será verificado por el equipo durante la revisión.</span>
+                </div>
+              </label>
 
               {/* Micrófono */}
               <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer', gap: '0.75rem' }}>
