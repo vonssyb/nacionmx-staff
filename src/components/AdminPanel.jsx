@@ -269,13 +269,15 @@ export default function AdminPanel({ user, onSignOut }) {
   const fetch = async () => {
     setLoading(true);
     setFetchError('');
-    // Usamos RPC con SECURITY DEFINER para evitar el error "permission denied for table users"
+    // RPC retorna JSON puro para evitar que RLS bloquee SETOF staff_applications
     const { data, error } = await supabase.rpc('get_all_staff_applications');
     if (error) {
       console.error('[Admin] Supabase error:', error);
       setFetchError(error.message);
     } else {
-      setApps(data || []);
+      // data puede ser el array directamente o un JSON string
+      const parsed = Array.isArray(data) ? data : (typeof data === 'string' ? JSON.parse(data) : (data || []));
+      setApps(parsed);
     }
     setLoading(false);
   };
