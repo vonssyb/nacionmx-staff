@@ -72,11 +72,12 @@ function AppModal({ app, onClose, onUpdate }) {
   const [tab, setTab]     = useState('p1');
 
   const act = async (status) => {
+    if (!note.trim()) { alert('Debes escribir una razón antes de continuar.'); return; }
     setBusy(true);
     const { data, error } = await supabase.rpc('review_staff_application', {
       app_id: app.id,
       new_status: status,
-      review_note: note || null,
+      review_note: note.trim(),
     });
     setBusy(false);
     if (!error && data === true) { onUpdate(app.id, status); onClose(); }
@@ -227,18 +228,25 @@ function AppModal({ app, onClose, onUpdate }) {
 
         {/* ── Acciones ── */}
         <div style={{ padding:'1.25rem 1.5rem', borderTop:'1px solid rgba(255,255,255,0.07)', background:'rgba(255,255,255,0.02)' }}>
+          <div style={{ marginBottom:'0.4rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <label style={{ fontSize:'0.78rem', fontWeight:600, color: note.trim() ? '#2ecc71' : '#f39c12' }}>
+              {note.trim() ? '✓ Razón lista' : '⚠ Razón requerida'}
+            </label>
+            <span style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>{note.length}/500</span>
+          </div>
           <textarea value={note} onChange={e=>setNote(e.target.value)} className="form-textarea"
-            placeholder="Nota interna (opcional, visible solo para staff)..."
-            style={{ minHeight:'65px', marginBottom:'0.75rem', resize:'vertical' }}/>
+            placeholder="Escribe la razón de tu decisión... (obligatorio para enviar)"
+            style={{ minHeight:'80px', marginBottom:'0.75rem', resize:'vertical', borderColor: note.trim() ? 'rgba(46,204,113,0.3)' : 'rgba(243,156,18,0.3)' }} maxLength={500}/>
           {(app.status==='pending'||app.status==='under_review') ? (
             <div style={{ display:'flex', gap:'0.75rem' }}>
-              <button className="btn btn-success" style={{ flex:1 }} onClick={()=>act('approved')} disabled={busy}>
-                <CheckCircle size={16}/> {busy?'Guardando...':'Aprobar'}
+              <button className="btn btn-success" style={{ flex:1, opacity: note.trim() ? 1 : 0.45 }}
+                onClick={()=>act('approved')} disabled={busy}>
+                <CheckCircle size={16}/> {busy?'Enviando...':'Aprobar y Notificar'}
               </button>
               <motion.button whileTap={{ scale: 0.97 }}
-                style={{ flex:1, padding:'0.65rem 1rem', borderRadius:'8px', background:'rgba(230,57,70,0.15)', color:'#E63946', border:'1px solid rgba(230,57,70,0.45)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', fontWeight:600, fontSize:'0.9rem' }}
+                style={{ flex:1, padding:'0.65rem 1rem', borderRadius:'8px', background:'rgba(230,57,70,0.15)', color:'#E63946', border:'1px solid rgba(230,57,70,0.45)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'0.4rem', fontWeight:600, fontSize:'0.9rem', opacity: note.trim() ? 1 : 0.45 }}
                 onClick={()=>act('rejected')} disabled={busy}>
-                <XCircle size={16}/> {busy?'Guardando...':'Rechazar'}
+                <XCircle size={16}/> {busy?'Enviando...':'Rechazar y Notificar'}
               </motion.button>
             </div>
           ) : (
