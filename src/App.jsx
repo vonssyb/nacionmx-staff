@@ -54,11 +54,11 @@ function App() {
     <div className="app-container">
       <div className="header-logo">
         {/* Placeholder estético que pedirá logo en la carpeta public de github */}
-        <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--nmx-red)' }}>
+        <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px dashed var(--nmx-red)', overflow: 'hidden', padding: '4px' }}>
           <img 
             src={logoPath}
             alt="NaciónMX Logo" 
-            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', border: 'none', boxShadow: 'none' }}
+            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', objectPosition: 'center 60%', border: 'none', boxShadow: 'none' }}
             onError={(e) => {
                e.target.style.display = 'none';
                e.target.parentElement.innerHTML = '<span style="font-size: 0.7rem; color: #adb5bd;">Pon logo.png<br/>en /public</span>';
