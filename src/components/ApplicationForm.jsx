@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronRight, ChevronLeft, User, MessageSquare, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, User, MessageSquare, ShieldCheck, CheckCircle2, LogOut } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 const STEPS = [
@@ -10,18 +10,19 @@ const STEPS = [
   { id: 4, title: 'Finalizar', icon: <Check size={20} /> }
 ];
 
-export default function ApplicationForm() {
+export default function ApplicationForm({ user }) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
   
-  // Estado del formulario
+  // Extraer la logica oficial de supabase discord
+  const discordUsername = user.user_metadata?.full_name || user.user_metadata?.name || user.email;
+  const discordId = user.identities?.find(i => i.provider === 'discord')?.id || 'desconocido';
+
   const [formData, setFormData] = useState({
     req_age: false,
     req_time: false,
     req_mic: false,
-    discord_username: '',
-    discord_id: '',
     roblox_username: '',
     reason_join: '',
     experience: ''
@@ -43,19 +44,22 @@ export default function ApplicationForm() {
     if (step > 1) setStep(prev => prev - 1);
   };
 
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      // Guardar en Supabase (Asegúrate de tener esta tabla 'staff_applications' creada en Supabase)
       const { error } = await supabase
         .from('staff_applications')
         .insert([{ 
-          discord_username: formData.discord_username,
-          discord_id: formData.discord_id,
+          discord_username: discordUsername,
+          discord_id: discordId,
           roblox_username: formData.roblox_username,
           reason_join: formData.reason_join,
           experience: formData.experience,
-          status: 'pending' // Esto es lo que verá el bot luego
+          status: 'pending'
         }]);
 
       if (error) {
@@ -73,15 +77,13 @@ export default function ApplicationForm() {
     }
   };
 
-  // Validaciones por paso
   const canGoNext = () => {
     if (step === 1) return formData.req_age && formData.req_time && formData.req_mic;
-    if (step === 2) return formData.discord_username.trim().length > 2 && formData.discord_id.trim().length > 15;
+    if (step === 2) return formData.roblox_username.trim().length > 3;
     if (step === 3) return formData.reason_join.length > 20 && formData.experience.length > 10;
     return true;
   };
 
-  // Animaciones Framer Motion
   const variants = {
     initial: { opacity: 0, x: 20 },
     animate: { opacity: 1, x: 0 },
@@ -97,9 +99,9 @@ export default function ApplicationForm() {
       >
         <CheckCircle2 size={80} color="var(--nmx-green)" className="mx-auto mb-4" />
         <h2 className="text-green mb-2">¡Solicitud Enviada!</h2>
-        <p className="mb-4">Tu postulación ha sido enviada al equipo administrativo de NaciónMX. Recibirás una respuesta en tu DM o en el canal de estado vía nuestro bot.</p>
-        <button className="btn btn-primary" onClick={() => window.location.reload()}>
-          Volver al Inicio
+        <p className="mb-4">Tu postulación oficial autografiada por <strong>@{discordUsername}</strong> ha sido enviada al equipo de NaciónMX.</p>
+        <button className="btn btn-secondary mt-2" onClick={signOut}>
+          <LogOut size={18} className="mr-2" /> Cerrar Sesión
         </button>
       </motion.div>
     );
@@ -107,8 +109,15 @@ export default function ApplicationForm() {
 
   return (
     <div className="glass-panel relative overflow-hidden">
-      {/* Indicador de pasos */}
-      <div className="steps-indicator">
+      
+      {/* Boton cerrar sesion decorativo superior */}
+      <div style={{ position: 'absolute', top: '15px', right: '15px' }}>
+        <button onClick={signOut} className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <LogOut size={14} /> Cerrar Sesión
+        </button>
+      </div>
+
+      <div className="steps-indicator mt-4">
         {STEPS.map((s) => (
           <div key={s.id} className={`step-item ${step === s.id ? 'active' : ''} ${step > s.id ? 'completed' : ''}`}>
             <div className="step-circle">
@@ -131,7 +140,7 @@ export default function ApplicationForm() {
           {step === 1 && (
             <div>
               <h3>Requisitos Mínimos</h3>
-              <p className="mb-4">Para poder aplicar, debes cumplir con todos los siguientes requisitos.</p>
+              <p className="mb-4">Hola <strong>{discordUsername}</strong>. Confirma tus requisitos para avanzar.</p>
               
               <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer' }}>
                 <input type="checkbox" name="req_age" checked={formData.req_age} onChange={updateForm} style={{ width: '20px', height: '20px', accentColor: 'var(--nmx-red)' }} />
@@ -152,20 +161,16 @@ export default function ApplicationForm() {
 
           {step === 2 && (
             <div>
-              <h3>Información del Usuario</h3>
-              <p className="mb-4">Identifícate correctamente para que podamos revisar tu perfil en Discord y Roblox.</p>
+              <h3>Vinculación Oficial</h3>
+              <p className="mb-4">Gracias al inicio de sesión, tus datos de Discord están securizados. Ahora solo necesitamos tu nombre en Roblox.</p>
               
-              <div className="form-group">
-                <label className="form-label">Discord Username (Ej: user#1234 o @user)</label>
-                <input type="text" className="form-input" placeholder="@usuario_nacion" name="discord_username" value={formData.discord_username} onChange={updateForm} />
+              <div className="form-group mb-4" style={{ background: 'rgba(0,255,100,0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(0,255,100,0.2)' }}>
+                <span style={{ fontSize: '0.8rem', color: '#2ecc71', fontWeight: 'bold' }}>✓ DISCORD VINCULADO</span>
+                <div style={{ marginTop: '0.5rem', fontWeight: '500' }}>User: {discordUsername}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {discordId}</div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label">Discord ID (Ej: 145070161768599...)</label>
-                <input type="text" className="form-input" placeholder="Tu ID de Discord de 17-19 números" name="discord_id" value={formData.discord_id} onChange={updateForm} />
-              </div>
-
-              <div className="form-group">
+              <div className="form-group mt-4">
                 <label className="form-label">Roblox Username (Para ERLC)</label>
                 <input type="text" className="form-input" placeholder="TuNombreEnRoblox" name="roblox_username" value={formData.roblox_username} onChange={updateForm} />
               </div>
@@ -179,12 +184,12 @@ export default function ApplicationForm() {
               
               <div className="form-group">
                 <label className="form-label">¿Por qué deseas pertenecer al equipo de Staff de NaciónMX?</label>
-                <textarea className="form-textarea" placeholder="Explica tus motivos, qué valor aportarías al equipo..." name="reason_join" value={formData.reason_join} onChange={updateForm} />
+                <textarea className="form-textarea" placeholder="Explica tus motivos..." name="reason_join" value={formData.reason_join} onChange={updateForm} />
               </div>
 
               <div className="form-group">
                 <label className="form-label">¿Tienes experiencia previa moderando otros servidores? (Cuéntanos)</label>
-                <textarea className="form-textarea" placeholder="Menciona servidores, roles que tuviste y qué aprendiste..." name="experience" value={formData.experience} onChange={updateForm} />
+                <textarea className="form-textarea" placeholder="Menciona servidores, roles que tuviste..." name="experience" value={formData.experience} onChange={updateForm} />
               </div>
             </div>
           )}
@@ -192,8 +197,8 @@ export default function ApplicationForm() {
           {step === 4 && (
             <div className="text-center">
               <ShieldCheck size={60} className="mx-auto mb-4 text-red" />
-              <h3>Confirmación</h3>
-              <p className="mb-4">Has completado todos los pasos. Al enviar, la información de <strong className="text-red">@{formData.discord_username}</strong> será evaluada profundamente y luego un administrador decidirá aceptarla o rechazarla mediante nuestro sistema interno (el cual notificará tus resultados de forma oficial).</p>
+              <h3>Confirmación Final</h3>
+              <p className="mb-4">Has completado todos los pasos. Al enviar, tu postulación oficial garantizada por tu cuenta de Discord <strong>@{discordUsername}</strong> será enviada al equipo.</p>
             </div>
           )}
         </motion.div>
@@ -222,7 +227,7 @@ export default function ApplicationForm() {
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Enviando...' : 'Enviar Postulación'} <Check size={18} />
+            {submitting ? 'Enviando...' : 'Enviar Postulación Oficial'} <Check size={18} />
           </button>
         )}
       </div>
