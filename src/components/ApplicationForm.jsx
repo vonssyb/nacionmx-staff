@@ -72,21 +72,27 @@ export default function ApplicationForm({ user }) {
     setRobloxUser(null);
     setRobloxError('');
     try {
-      const res = await fetch('https://users.roblox.com/v1/usernames/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ usernames: [formData.roblox_username.trim()], excludeBannedUsers: true })
+      // Usar endpoint legacy GET que soporta CORS desde browsers
+      const encoded = encodeURIComponent(formData.roblox_username.trim());
+      const res = await fetch(`https://api.roblox.com/users/get-by-username?username=${encoded}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
       });
+      if (!res.ok) throw new Error('not_found');
       const data = await res.json();
-      if (data.data && data.data.length > 0) {
-        const rUser = data.data[0];
-        const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${rUser.id}&size=150x150&format=Png`);
-        const avatarData = await avatarRes.json();
-        setRobloxUser({ ...rUser, avatarUrl: avatarData.data?.[0]?.imageUrl || null });
-      } else {
+      if (!data.Id || data.errorMessage) {
         setRobloxError('Usuario no encontrado en Roblox. Verifica que el nombre sea exacto.');
+        return;
       }
-    } catch { setRobloxError('Error conectando con Roblox. Intenta de nuevo.'); }
+      // Buscar avatar con proxy alternativo
+      let avatarUrl = null;
+      try {
+        const avatarRes = await fetch(`https://www.roblox.com/headshot-thumbnail/image?userId=${data.Id}&width=150&height=150&format=png`);
+        if (avatarRes.ok) avatarUrl = avatarRes.url;
+      } catch { /* avatar opcional */ }
+
+      setRobloxUser({ id: data.Id, name: data.Username, displayName: data.Username, avatarUrl });
+    } catch { setRobloxError('Usuario no encontrado en Roblox. Verifica que el nombre sea exacto.'); }
     finally { setRobloxVerifying(false); }
   };
 
