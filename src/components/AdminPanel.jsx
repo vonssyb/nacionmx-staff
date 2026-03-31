@@ -269,10 +269,8 @@ export default function AdminPanel({ user, onSignOut }) {
   const fetch = async () => {
     setLoading(true);
     setFetchError('');
-    const { data, error } = await supabase
-      .from('staff_applications')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Usamos RPC con SECURITY DEFINER para evitar el error "permission denied for table users"
+    const { data, error } = await supabase.rpc('get_all_staff_applications');
     if (error) {
       console.error('[Admin] Supabase error:', error);
       setFetchError(error.message);
