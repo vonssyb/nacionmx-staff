@@ -29,6 +29,7 @@ function App() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
+          scopes: 'identify email guilds.members.read',
           redirectTo: 'https://vonssyb.github.io/nacionmx-staff/'
         }
       });
@@ -78,7 +79,7 @@ function App() {
           </button>
         </div>
       ) : (
-        <ApplicationForm user={session.user} />
+        <ApplicationForm user={session.user} providerToken={session.provider_token} />
       )}
     </div>
   );

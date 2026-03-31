@@ -33,7 +33,7 @@ function getScoreLabel(score) {
   return SCORE_LABELS.find(s => score >= s.min) || SCORE_LABELS[SCORE_LABELS.length - 1];
 }
 
-export default function ApplicationForm({ user }) {
+export default function ApplicationForm({ user, providerToken }) {
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -43,6 +43,28 @@ export default function ApplicationForm({ user }) {
   const discordId = user.identities?.find(i => i.provider === 'discord')?.id || '0';
   const { days: accountAgeDays, createdAt } = getDiscordAccountAgeDays(discordId);
   const meetsTimeReq = accountAgeDays >= 30;
+
+  // Server join date (auto)
+  const GUILD_ID = '1398525215134318713';
+  const [serverJoinDays, setServerJoinDays] = useState(null); // null = loading
+  const [meetsServerReq, setMeetsServerReq] = useState(false);
+
+  useEffect(() => {
+    if (!providerToken) { setServerJoinDays(-1); return; }
+    fetch(`https://discord.com/api/v10/users/@me/guilds/${GUILD_ID}/member`, {
+      headers: { Authorization: `Bearer ${providerToken}` }
+    })
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(data => {
+        const joinedAt = new Date(data.joined_at);
+        const days = Math.floor((Date.now() - joinedAt.getTime()) / (1000 * 60 * 60 * 24));
+        setServerJoinDays(days);
+        const meets = days >= 5;
+        setMeetsServerReq(meets);
+        setFormData(prev => ({ ...prev, req_server: meets }));
+      })
+      .catch(() => setServerJoinDays(-1)); // Can't verify = manual fallback
+  }, [providerToken]);
 
   const [formData, setFormData] = useState({
     req_age: false,
@@ -176,15 +198,42 @@ export default function ApplicationForm({ user }) {
                 </div>
               </div>
 
-              {/* Tiempo en servidor - MANUAL */}
-              <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer', gap: '0.75rem' }}>
-                <input type="checkbox" name="req_server" checked={formData.req_server} onChange={updateForm}
-                  style={{ width: '20px', height: '20px', accentColor: 'var(--nmx-red)', flexShrink: 0 }} />
-                <div>
-                  <span className="form-label" style={{ display: 'block' }}>Llevo al menos 5 días en el servidor de NaciónMX.</span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>El tiempo de membresía será verificado por el equipo durante la revisión.</span>
+              {/* Tiempo en servidor - AUTO si se pudo verificar */}
+              {serverJoinDays === null ? (
+                <div style={{ padding: '0.9rem', borderRadius: '8px', marginBottom: '1rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>⏳ Verificando tiempo en servidor...</span>
                 </div>
-              </label>
+              ) : serverJoinDays >= 0 ? (
+                // Verificación automática exitosa
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem',
+                  borderRadius: '8px', marginBottom: '1rem',
+                  background: meetsServerReq ? 'rgba(46,204,113,0.08)' : 'rgba(230,57,70,0.08)',
+                  border: `1px solid ${meetsServerReq ? 'rgba(46,204,113,0.3)' : 'rgba(230,57,70,0.3)'}`
+                }}>
+                  <div style={{ width: '20px', height: '20px', borderRadius: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: meetsServerReq ? 'var(--nmx-green)' : 'rgba(255,255,255,0.1)' }}>
+                    {meetsServerReq && <Check size={14} color="white" />}
+                  </div>
+                  <div>
+                    <span className="form-label" style={{ color: meetsServerReq ? 'var(--nmx-green)' : 'var(--nmx-red)', display: 'block' }}>
+                      {meetsServerReq ? '✓ Tiempo en servidor verificado' : '✗ Llevas menos de 5 días en el servidor'}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Mínimo 5 días en NaciónMX. {serverJoinDays >= 0 && `(${serverJoinDays} día${serverJoinDays !== 1 ? 's' : ''} en el servidor)`}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                // No se pudo verificar automáticamente — checkbox manual
+                <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer', gap: '0.75rem' }}>
+                  <input type="checkbox" name="req_server" checked={formData.req_server} onChange={updateForm}
+                    style={{ width: '20px', height: '20px', accentColor: 'var(--nmx-red)', flexShrink: 0 }} />
+                  <div>
+                    <span className="form-label" style={{ display: 'block' }}>Llevo al menos 5 días en el servidor de NaciónMX.</span>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>No pudimos verificarlo automáticamente. El staff lo comprobará.</span>
+                  </div>
+                </label>
+              )}
 
               {/* Micrófono */}
               <label className="form-group" style={{ flexDirection: 'row', alignItems: 'center', cursor: 'pointer', gap: '0.75rem' }}>
