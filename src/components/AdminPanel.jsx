@@ -258,8 +258,9 @@ export default function AdminPanel({ user, onSignOut }) {
   const discordId = user.identities?.find(i => i.provider === 'discord')?.id;
   const isOwner   = discordId === OWNER_ID;
 
-  const [apps, setApps]     = useState([]);
+  const [apps, setApps]       = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [filter, setFilter]     = useState('all');
   const [search, setSearch]     = useState('');
   const [sort, setSort]         = useState('newest');
@@ -267,8 +268,17 @@ export default function AdminPanel({ user, onSignOut }) {
 
   const fetch = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('staff_applications').select('*').order('created_at', { ascending: false });
-    if (!error) setApps(data || []);
+    setFetchError('');
+    const { data, error } = await supabase
+      .from('staff_applications')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('[Admin] Supabase error:', error);
+      setFetchError(error.message);
+    } else {
+      setApps(data || []);
+    }
     setLoading(false);
   };
 
@@ -364,6 +374,17 @@ export default function AdminPanel({ user, onSignOut }) {
           </select>
         </div>
       </div>
+
+      {/* ── Error / Debug ── */}
+      {fetchError && (
+        <div style={{ background:'rgba(230,57,70,0.1)', border:'1px solid rgba(230,57,70,0.35)', borderRadius:'10px', padding:'1rem', marginBottom:'1rem', fontSize:'0.82rem' }}>
+          <strong style={{ color:'#E63946' }}>Error de Supabase:</strong>
+          <code style={{ display:'block', marginTop:'0.3rem', color:'#f8a5a5', wordBreak:'break-all' }}>{fetchError}</code>
+          <div style={{ marginTop:'0.5rem', color:'var(--text-muted)', fontSize:'0.75rem' }}>
+            Tu Discord ID detectado: <code style={{ color:'#f39c12' }}>{discordId || 'no encontrado'}</code>
+          </div>
+        </div>
+      )}
 
       {/* ── Lista ── */}
       {loading ? (
